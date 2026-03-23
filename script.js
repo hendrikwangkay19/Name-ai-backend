@@ -1,276 +1,378 @@
-// Global state
-let isGenerating = false;
-let currentProduct = '';
+// ============================================
+// AI PRODUCT GENERATOR v2.0 - PRODUCTION READY
+// ============================================
 
 class AIProductGenerator {
     constructor() {
+        this.isGenerating = false;
+        this.currentProduct = '';
+        this.init();
+    }
+
+    init() {
+        // Cache DOM elements
+        this.elements = {
+            topicInput: document.getElementById('topic'),
+            resultDiv: document.getElementById('result'),
+            promoDiv: document.getElementById('promo'),
+            promoBtn: document.getElementById('promoBtn'),
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            productLoader: document.getElementById('product-loader'),
+            generateBtn: document.querySelector('.btn-primary')
+        };
+
         this.initEventListeners();
-        this.topicInput = document.getElementById('topic');
-        this.resultDiv = document.getElementById('result');
-        this.promoDiv = document.getElementById('promo');
-        this.promoBtn = document.getElementById('promoBtn');
-        this.loadingOverlay = document.getElementById('loadingOverlay');
-        this.productLoader = document.getElementById('product-loader');
+        console.log('✅ AI Product Generator initialized');
     }
 
     initEventListeners() {
-        // Enter key support
-        this.topicInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !isGenerating) {
+        const { topicInput } = this.elements;
+
+        // Enter key to generate
+        topicInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !this.isGenerating) {
                 this.generateProduct();
             }
         });
 
-        // Input focus effect
-        this.topicInput.addEventListener('input', () => {
-            this.topicInput.classList.add('focused');
+        // Real-time input styling
+        topicInput.addEventListener('input', () => topicInput.classList.add('focused'));
+        topicInput.addEventListener('blur', () => {
+            setTimeout(() => topicInput.classList.remove('focused'), 200);
         });
 
-        // Clear focus on blur
-        this.topicInput.addEventListener('blur', () => {
-            setTimeout(() => this.topicInput.classList.remove('focused'), 200);
+        // Clear button click
+        document.addEventListener('click', (e) => {
+            if (e.target.matches('.btn-clear')) this.clearAll();
         });
     }
 
-    async showLoading(show = true) {
-        isGenerating = show;
-        this.loadingOverlay?.classList.toggle('active', show);
-        this.topicInput.disabled = show;
+    // ==================== LOADING ====================
+    showLoading(show = true) {
+        this.isGenerating = show;
         
-        const btnPrimary = document.querySelector('.btn-primary');
+        // Toggle overlay
+        this.elements.loadingOverlay?.classList.toggle('active', show);
+        this.elements.topicInput.disabled = show;
+        
+        // Button states
+        const btn = this.elements.generateBtn;
         if (show) {
-            this.productLoader?.classList.add('active');
-            btnPrimary?.classList.add('loading');
+            this.elements.productLoader?.classList.add('active');
+            btn?.classList.add('loading');
+            btn.disabled = true;
         } else {
-            this.productLoader?.classList.remove('active');
-            btnPrimary?.classList.remove('loading');
+            this.elements.productLoader?.classList.remove('active');
+            btn?.classList.remove('loading');
+            btn.disabled = false;
         }
     }
 
+    // ==================== NOTIFICATIONS ====================
     showNotification(message, type = 'success') {
-        // Remove existing notifications
+        // Clean previous
         document.querySelectorAll('.notification').forEach(n => n.remove());
         
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-            ${message}
+        const notif = document.createElement('div');
+        notif.className = `notification notification-${type}`;
+        notif.innerHTML = `
+            <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
+            <span>${message}</span>
+            <button class="notif-close" onclick="this.parentElement.remove()">×</button>
         `;
         
-        document.body.appendChild(notification);
-        
-        // Animate in
-        requestAnimationFrame(() => {
-            notification.classList.add('show');
-        });
+        document.body.appendChild(notif);
+        requestAnimationFrame(() => notif.classList.add('show'));
         
         // Auto remove
         setTimeout(() => {
-            notification.classList.remove('show');
-            setTimeout(() => notification.remove(), 300);
-        }, 4000);
+            notif.classList.remove('show');
+            setTimeout(() => notif.remove(), 300);
+        }, 5000);
     }
 
+    // ==================== GENERATE PRODUCT ====================
     async generateProduct() {
-        const topic = this.topicInput.value.trim();
+        const topic = this.elements.topicInput.value.trim();
         
+        // Validation
         if (!topic) {
-            this.showNotification('Masukkan topik produk terlebih dahulu! 😅', 'error');
-            this.topicInput.focus();
+            this.showNotification('📝 Masukkan topik produk dulu!', 'error');
+            this.elements.topicInput.focus();
             return;
         }
 
-        if (isGenerating) return;
+        if (this.isGenerating) {
+            this.showNotification('⏳ Sabar, AI masih berpikir...', 'info');
+            return;
+        }
 
         try {
             this.showLoading(true);
-            this.resultDiv.innerHTML = '<div class="loading-text">🤖 AI sedang generate ide produk cerdas...</div>';
+            this.elements.resultDiv.innerHTML = `
+                <div class="loading-text">
+                    <i class="fas fa-brain spinner"></i>
+                    <p>🤖 AI sedang generate 5-7 ide produk inovatif...</p>
+                </div>
+            `;
 
-            // 🔥 VERCEL PATH FIX
-            const res = await fetch("/api/generate", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ topic })
             });
 
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP ${res.status}`);
+            // Better error handling
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || errorData.detail || `Server error: ${response.status}`);
             }
 
-            const data = await res.json();
+            const data = await response.json();
+            const result = data.result || data.message || 'Tidak ada hasil';
 
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            // Enhanced result dengan fallback
-            const resultContent = data.result || data.message || 'Tidak ada hasil dari AI';
-            this.resultDiv.innerHTML = `
-                <div class="result-markdown">${this.formatMarkdown(resultContent)}</div>
+            // Success UI
+            this.elements.resultDiv.innerHTML = `
+                <div class="success-header">
+                    <i class="fas fa-lightbulb success-icon"></i>
+                    <h3>✅ ${topic} - Ide Produk Siap!</h3>
+                </div>
+                <div class="result-markdown">${this.formatMarkdown(result)}</div>
                 <div class="result-actions">
                     <button class="btn-copy" onclick="app.copyToClipboard('product')">
-                        <i class="fas fa-copy"></i> Copy Ide Produk
+                        <i class="fas fa-copy"></i> Copy Semua
                     </button>
                     <button class="btn-promo" onclick="app.createPromo()">
                         <i class="fas fa-bullhorn"></i> Buat Caption IG
                     </button>
+                    <button class="btn-clear" onclick="app.clearAll()">
+                        <i class="fas fa-trash"></i> Clear
+                    </button>
                 </div>
             `;
 
-            currentProduct = resultContent;
-            this.promoBtn.disabled = false;
-            this.promoBtn.classList.add('active');
-            
-            this.showNotification('✅ 5-7 ide produk siap! Pilih yang terbaik 👆', 'success');
-            this.topicInput.select();
+            this.currentProduct = result;
+            this.enablePromoButton();
+
+            this.showNotification(`✨ ${topic} berhasil digenerate!`, 'success');
 
         } catch (error) {
             console.error('Generate error:', error);
-            this.resultDiv.innerHTML = `
-                <div class="error-message">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>⚠️ ${error.message}</p>
-                    <small>Coba topic lain atau refresh halaman</small>
-                    <button class="btn-retry" onclick="app.generateProduct()">🔄 Coba Lagi</button>
+            this.elements.resultDiv.innerHTML = `
+                <div class="error-card">
+                    <i class="fas fa-exclamation-triangle error-icon"></i>
+                    <h3>⚠️ Generate Gagal</h3>
+                    <p>${error.message}</p>
+                    <div class="error-actions">
+                        <button class="btn-retry" onclick="app.generateProduct()">🔄 Retry</button>
+                        <button class="btn-clear" onclick="app.clearAll()">🗑️ Clear</button>
+                    </div>
                 </div>
             `;
-            this.showNotification('❌ Gagal generate. Cek koneksi & API key', 'error');
+            this.showNotification(`❌ ${error.message}`, 'error');
         } finally {
             this.showLoading(false);
         }
     }
 
+    // ==================== CREATE PROMO ====================
     async createPromo() {
-        if (!currentProduct) {
-            this.showNotification('Generate produk dulu ya! 😊', 'error');
+        if (!this.currentProduct) {
+            this.showNotification('Generate produk dulu! 😊', 'error');
             return;
         }
 
         try {
-            this.promoDiv.innerHTML = '<div class="loading-text">✨ AI buat caption viral Instagram...</div>';
+            this.elements.promoDiv.innerHTML = `
+                <div class="loading-text">
+                    <i class="fas fa-magic spinner"></i>
+                    <p>✨ AI buat caption Instagram viral...</p>
+                </div>
+            `;
 
-            // 🔥 VERCEL PATH FIX
-            const res = await fetch("/api/promo", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ product: currentProduct })
+            const response = await fetch('/api/promo', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ product: this.currentProduct })
             });
 
-            if (!res.ok) {
-                const errorData = await res.json().catch(() => ({}));
-                throw new Error(errorData.error || `HTTP ${res.status}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `HTTP ${response.status}`);
             }
 
-            const data = await res.json();
+            const data = await response.json();
+            const promoText = data.result || data.message || 'No caption';
 
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            const promoContent = data.result || data.message || 'Tidak ada caption';
-            this.promoDiv.innerHTML = `
-                <div class="promo-markdown">${this.formatMarkdown(promoContent)}</div>
+            this.elements.promoDiv.innerHTML = `
+                <div class="success-header">
+                    <i class="fas fa-hashtag success-icon"></i>
+                    <h3>📱 Caption Instagram Ready!</h3>
+                </div>
+                <div class="promo-markdown">${this.formatMarkdown(promoText)}</div>
                 <div class="result-actions">
                     <button class="btn-copy" onclick="app.copyToClipboard('promo')">
                         <i class="fas fa-copy"></i> Copy Caption
                     </button>
-                    <button class="btn-copy" onclick="app.copyPromoLink()">
-                        <i class="fas fa-link"></i> Share Link
+                    <button class="btn-share" onclick="app.sharePromo()">
+                        <i class="fas fa-share-alt"></i> Share
+                    </button>
+                    <button class="btn-clear" onclick="app.clearPromo()">
+                        <i class="fas fa-trash"></i> Clear
                     </button>
                 </div>
             `;
 
-            this.showNotification('📱 Caption IG ready to post! 🔥', 'success');
-            this.promoDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Smooth scroll
+            this.elements.promoDiv.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'start' 
+            });
+
+            this.showNotification('🎉 Caption siap posting Instagram!', 'success');
 
         } catch (error) {
             console.error('Promo error:', error);
-            this.promoDiv.innerHTML = `
-                <div class="error-message">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <p>Gagal buat caption: ${error.message}</p>
+            this.elements.promoDiv.innerHTML = `
+                <div class="error-card">
+                    <i class="fas fa-exclamation-triangle error-icon"></i>
+                    <h3>⚠️ Promo Gagal</h3>
+                    <p>${error.message}</p>
                 </div>
             `;
-            this.showNotification('❌ Caption gagal dibuat', 'error');
+            this.showNotification(`❌ ${error.message}`, 'error');
         }
+    }
+
+    // ==================== UTILITIES ====================
+    enablePromoButton() {
+        const btn = this.elements.promoBtn;
+        btn.disabled = false;
+        btn.classList.add('active');
     }
 
     copyToClipboard(type) {
         let text = '';
+        
         try {
             if (type === 'product') {
-                text = this.resultDiv.querySelector('.result-markdown')?.textContent || '';
-            } else if (type === 'promo') {
-                text = this.promoDiv.querySelector('.promo-markdown')?.textContent || '';
+                text = this.elements.resultDiv.querySelector('.result-markdown')?.textContent?.trim() || '';
+            } else {
+                text = this.elements.promoDiv.querySelector('.promo-markdown')?.textContent?.trim() || '';
             }
 
-            if (!text) throw new Error('No content to copy');
+            if (!text) {
+                this.showNotification('Tidak ada teks untuk dicopy', 'error');
+                return;
+            }
 
-            navigator.clipboard.writeText(text).then(() => {
-                this.showNotification('📋 Tersalin! Bisa langsung paste 👌', 'success');
-            }).catch(() => {
-                // Fallback for old browsers
-                const textArea = document.createElement('textarea');
-                textArea.value = text;
-                document.body.appendChild(textArea);
-                textArea.select();
+            // Modern clipboard
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.showNotification('📋 Tersalin ke clipboard! ✅', 'success');
+                });
+            } else {
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.focus();
+                textarea.select();
                 document.execCommand('copy');
-                document.body.removeChild(textArea);
-                this.showNotification('📋 Tersalin!', 'success');
-            });
+                document.body.removeChild(textarea);
+                this.showNotification('📋 Tersalin! (fallback)', 'success');
+            }
         } catch (error) {
             this.showNotification('Gagal copy 😅', 'error');
         }
     }
 
-    copyPromoLink() {
-        try {
-            const url = `${window.location.origin}${window.location.pathname}`;
-            navigator.clipboard.writeText(url).then(() => {
-                this.showNotification('🔗 Link website tersalin!', 'success');
+    sharePromo() {
+        if (navigator.share) {
+            navigator.share({
+                title: 'AI Product Generator',
+                text: this.currentProduct?.slice(0, 100) || '',
+                url: window.location.href
             });
-        } catch (error) {
-            this.showNotification('Gagal copy link', 'error');
+        } else {
+            this.copyPromoLink();
         }
     }
 
+    copyPromoLink() {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            this.showNotification('🔗 Link website dicopy!', 'success');
+        });
+    }
+
+    clearAll() {
+        this.elements.topicInput.value = '';
+        this.elements.resultDiv.innerHTML = '';
+        this.elements.promoDiv.innerHTML = '';
+        this.currentProduct = '';
+        this.elements.promoBtn.disabled = true;
+        this.elements.promoBtn.classList.remove('active');
+        this.elements.topicInput.focus();
+        this.showNotification('🗑️ Semua dibersihkan', 'info');
+    }
+
+    clearPromo() {
+        this.elements.promoDiv.innerHTML = '';
+        this.showNotification('🗑️ Promo dibersihkan', 'info');
+    }
+
+    // ==================== MARKDOWN RENDER ====================
     formatMarkdown(text) {
-        if (!text) return '<p>Tidak ada konten</p>';
+        if (!text) return '<p><em>Tidak ada konten dari AI</em></p>';
         
-        return text
+        let formatted = text
             // Headers
-            .replace(/^### (.*$)/gim, '<h4 style="color:#fbbf24">$1</h4>')
-            .replace(/^## (.*$)/gim, '<h3 style="color:#f59e0b">$1</h3>')
-            .replace(/^# (.*$)/gim, '<h2 style="color:#fbbf24;font-size:1.5em">$1</h2>')
-            // Bold & Italic
-            .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#fbbf24">$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/^###\s*(.+)$/gim, '<h4 style="color:#fbbf24;margin:1rem 0">$1</h4>')
+            .replace(/^##\s*(.+)$/gim, '<h3 style="color:#f59e0b;margin:1.2rem 0 0.8rem">$1</h3>')
+            .replace(/^#\s*(.+)$/gim, '<h2 style="color:#fbbf24;font-size:1.6em;margin:1.5rem 0">$1</h2>')
+            
+            // Bold, italic, strikethrough
+            .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#fbbf24">$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/~~(.+?)~~/g, '<del>$1</del>')
+            
             // Lists
-            .replace(/^(\s*[-*•] )(.*$)/gim, '<div class="markdown-list"><i class="fas fa-circle" style="color:#fbbf24"></i> $2</div>')
-            // Links
-            .replace(/\$([^\$]+)\$\$([^)]+)\$/g, '<a href="$2" target="_blank" style="color:#60a5fa">$1</a>')
-            // Code blocks
-            .replace(/```([\s\S]*?)```/g, '<pre style="background:rgba(251,191,36,0.1);padding:1rem;border-radius:8px">$1</pre>')
+            .replace(/^(\s*)([-*•])\s+(.+)$/gm, '$1<div class="list-item"><i class="fas fa-circle" style="color:#94a3b8"></i>$3</div>')
+            
+            // Links & mentions
+            .replace(/\$(.+?)\$\$(.+?)\$/g, '<a href="$2" target="_blank" style="color:#60a5fa">$1</a>')
+            .replace(/@(\w+)/g, '<span style="color:#fbbf24">@$1</span>')
+            
+            // Code & quotes
+            .replace(/```([\s\S]+?)```/g, '<pre style="background:rgba(251,191,36,0.1);padding:1rem;border-radius:12px;font-family:monospace">$1</pre>')
+            .replace(/^>\s*(.+)$/gm, '<blockquote style="border-left:3px solid #fbbf24;padding-left:1rem;margin:1rem 0">$1</blockquote>')
+            
+            // Emojis & separators
+            .replace(/---/g, '<hr style="border: none;height:1px;background:linear-gradient(90deg,transparent,#fbbf24,transparent);margin:2rem 0">')
+            
             // Line breaks
-            .replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')
-            // Wrap in paragraph
-            .replace(/^/, '<p>').replace(/$/, '</p>');
+            .replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>');
+
+        return `<div class="markdown-content"><p>${formatted}</p></div>`;
     }
 }
 
-// Initialize app when DOM ready
+// 🔥 GLOBAL INIT - VERCEL READY
 document.addEventListener('DOMContentLoaded', () => {
-    const app = new AIProductGenerator();
-    window.app = app;
+    window.app = new AIProductGenerator();
     window.generateProduct = () => app.generateProduct();
     window.createPromo = () => app.createPromo();
+    
+    // Welcome message
+    setTimeout(() => {
+        app.showNotification('🚀 AI Product Generator siap digunakan!', 'success');
+    }, 1000);
 });
 
-// PWA Support (skip if no sw.js)
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-        registrations.forEach(registration => registration.unregister());
-    });
-}
+// Error boundary
+window.addEventListener('error', (e) => {
+    console.error('Global error:', e.error);
+    app?.showNotification('Ada error teknis. Refresh halaman.', 'error');
+});
