@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 AI Digital Product Generator - Hendrik Wangkay</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <meta name="description" content="Generate ide produk digital dan caption promosi dengan AI dalam hitungan detik!">
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="nav-container">
+            <div class="logo">
+                <i class="fas fa-rocket"></i>
+                <span>AI Product Gen</span>
+            </div>
+            <div class="hero-badge">
+                <span>Made by Hendrik Wangkay</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="container">
+            <!-- Hero Section -->
+            <section class="hero">
+                <div class="hero-content">
+                    <h1 class="hero-title">
+                        <span class="gradient-text">Generate Produk Digital</span>
+                        <br>
+                        <span class="hero-subtitle">dengan AI Super Cepat</span>
+                    </h1>
+                    <p class="hero-desc">
+                        Masukkan topik, AI akan generate 5-7 ide produk digital 
+                        + caption promosi Instagram-ready dalam <strong>3 detik!</strong>
+                    </p>
+                </div>
+
+                <!-- Input Section -->
+                <div class="input-section">
+                    <div class="input-group">
+                        <i class="fas fa-lightbulb input-icon"></i>
+                        <input 
+                            type="text" 
+                            id="topic" 
+                            placeholder="Contoh: Fitness, Crypto Trading, Public Speaking..."
+                            maxlength="100"
+                        >
+                        <button class="btn-primary" onclick="generateProduct()">
+                            <span class="btn-text">🚀 Generate Produk</span>
+                            <div class="btn-loader" id="product-loader"></div>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section">
+                <!-- Product Results -->
+                <div class="result-card">
+                    <div class="card-header">
+                        <i class="fas fa-cube"></i>
+                        <h3>💡 Ide Produk Digital</h3>
+                    </div>
+                    <div id="result" class="result-content"></div>
+                </div>
+
+                <!-- Promo Button & Results -->
+                <div class="promo-section">
+                    <button class="btn-secondary" id="promoBtn" onclick="createPromo()" disabled>
+                        <i class="fas fa-bullhorn"></i>
+                        ✨ Buat Caption Promosi
+                    </button>
+                    <div class="result-card promo-card">
+                        <div class="card-header">
+                            <i class="fas fa-hashtag"></i>
+                            <h3>📱 Caption Instagram Ready</h3>
+                        </div>
+                        <div id="promo" class="result-content"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2024 AI Product Generator by <strong>Hendrik Wangkay</strong></p>
+            <p>Powered by <i class="fab fa-openai"></i> GPT-4o-mini</p>
+        </div>
+    </footer>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>AI sedang berpikir...</p>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
